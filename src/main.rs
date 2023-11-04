@@ -5,8 +5,11 @@ mod skiplist;
 pub fn main() {
     let mut skiplist = SkipList::new();
 
-    skiplist.add(1, 1);
-    skiplist.add(2, 2);
-    skiplist.add(3, 3);
-    skiplist.add(4, 4);
+    for i in 1..10 {
+        skiplist.add(i, i);
+    }
+
+    for i in 1..11 {
+        println!("{:?}", skiplist.remove(i));
+    }
 }
