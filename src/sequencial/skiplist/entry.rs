@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, ptr::null_mut};
+use std::{cmp::Ordering};
 
 pub(crate) struct Entry<K, V, C>
 where

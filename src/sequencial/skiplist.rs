@@ -1,8 +1,6 @@
 use std::{
-    borrow::BorrowMut,
-    char::MAX,
     cmp::{min, Ordering},
-    ptr::{null, null_mut},
+    ptr::{null_mut},
 };
 
 use self::entry::{Entry, Key};
