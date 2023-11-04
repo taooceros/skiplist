@@ -1,4 +1,3 @@
-use crate::skiplist::entry::Key;
 use std::{
     borrow::BorrowMut,
     char::MAX,
@@ -6,7 +5,7 @@ use std::{
     ptr::{null, null_mut},
 };
 
-use self::entry::Entry;
+use self::entry::{Entry, Key};
 use rand::random;
 
 mod entry;
@@ -163,7 +162,7 @@ where
 
     pub fn get(&self, key: K) -> Option<&V> {
         let pred = self.head;
-        
+
         let key = Key::Entry(key);
 
         for level in (0..MAX_LEVEL).rev() {
