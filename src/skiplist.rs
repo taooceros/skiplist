@@ -57,10 +57,7 @@ where
             }
         }
 
-        SkipList {
-            head,
-            key_cmp: cmp,
-        }
+        SkipList { head, key_cmp: cmp }
     }
 
     pub fn add(&mut self, key: K, value: V) -> bool {
@@ -112,6 +109,7 @@ where
             }
         }
 
+        // We uses box as a allocator
         let entry_to_remove = unsafe { Box::from_raw(entry_to_remove) };
 
         return entry_to_remove.value;
@@ -161,6 +159,26 @@ where
         }
 
         return level_found;
+    }
+
+    pub fn get(&self, key: K) -> Option<&V> {
+        let pred = self.head;
+        
+        let key = Key::Entry(key);
+
+        for level in (0..MAX_LEVEL).rev() {
+            let mut current = unsafe { (*pred).nexts[level].as_mut().unwrap() };
+
+            while self.cmp_key(&current.key, &key) == Ordering::Less {
+                current = unsafe { (*current).nexts[level].as_mut().unwrap() };
+            }
+
+            if self.cmp_key(&current.key, &key) == Ordering::Equal {
+                return current.value.as_ref();
+            }
+        }
+
+        return None;
     }
 }
 
