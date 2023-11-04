@@ -1,6 +1,6 @@
 use std::{
     cmp::{min, Ordering},
-    ptr::{null_mut},
+    ptr::null_mut,
 };
 
 use self::entry::{Entry, Key};
