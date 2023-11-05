@@ -112,18 +112,6 @@ where
         return entry_to_remove.value;
     }
 
-    fn cmp_key(&self, key1: &Key<K>, key2: &Key<K>) -> Ordering {
-        match (key1, key2) {
-            (Key::Head, Key::Head) => Ordering::Equal,
-            (Key::Head, _) => Ordering::Less,
-            (_, Key::Head) => Ordering::Greater,
-            (Key::Tail, Key::Tail) => Ordering::Equal,
-            (Key::Tail, _) => Ordering::Greater,
-            (_, Key::Tail) => Ordering::Less,
-            (Key::Entry(k1), Key::Entry(k2)) => (self.key_cmp)(k1, k2),
-        }
-    }
-
     fn find<'a, 'b>(
         &'a self,
         key: &Key<K>,
@@ -142,12 +130,12 @@ where
         for level in (0..MAX_LEVEL).rev() {
             let mut current = unsafe { pred.nexts[level].as_mut().unwrap() };
 
-            while self.cmp_key(&current.key, key) == Ordering::Less {
+            while current.key < *key {
                 pred = current;
                 current = unsafe { pred.nexts[level].as_mut().unwrap() };
             }
 
-            if level_found.is_none() && self.cmp_key(&current.key, key) == Ordering::Equal {
+            if level_found.is_none() && current.key == *key {
                 level_found = Some(level);
             }
 
@@ -166,11 +154,11 @@ where
         for level in (0..MAX_LEVEL).rev() {
             let mut current = unsafe { (*pred).nexts[level].as_mut().unwrap() };
 
-            while self.cmp_key(&current.key, &key) == Ordering::Less {
+            while current.key < key {
                 current = unsafe { (*current).nexts[level].as_mut().unwrap() };
             }
 
-            if self.cmp_key(&current.key, &key) == Ordering::Equal {
+            if current.key == key {
                 return current.value.as_ref();
             }
         }
