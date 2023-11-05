@@ -1,4 +1,6 @@
 use std::cmp::Ordering;
+use std::sync::atomic::{AtomicBool, AtomicPtr};
+use std::sync::Mutex;
 
 pub struct Entry<K, V, C>
 where
@@ -7,7 +9,11 @@ where
 {
     pub key: Key<K>,
     pub value: Option<V>,
-    pub nexts: Vec<*mut Entry<K, V, C>>,
+    pub lock: Mutex<()>,
+    pub marked: AtomicBool,
+    pub fully_linked: AtomicBool,
+    pub top_level: usize,
+    pub nexts: Vec<AtomicPtr<Entry<K, V, C>>>,
 }
 
 #[derive(PartialEq)]
@@ -20,7 +26,10 @@ where
     Tail,
 }
 
-impl<K> PartialOrd for Key<K> where K: Ord {
+impl<K> PartialOrd for Key<K>
+where
+    K: Ord,
+{
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self, other) {
             (Key::Head, Key::Head) => Some(Ordering::Equal),
