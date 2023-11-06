@@ -147,7 +147,7 @@ where
     }
 
     pub fn get(&self, key: K) -> Option<&V> {
-        let pred = self.head;
+        let mut pred = self.head;
 
         let key = Key::Entry(key);
 
@@ -155,6 +155,7 @@ where
             let mut current = unsafe { (*pred).nexts[level].as_mut().unwrap() };
 
             while current.key < key {
+                pred = current;
                 current = unsafe { (*current).nexts[level].as_mut().unwrap() };
             }
 

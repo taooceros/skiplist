@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::sync::atomic::{AtomicBool, Ordering::*};
 use std::sync::{Mutex, MutexGuard};
 use std::{
@@ -7,6 +8,7 @@ use std::{
 };
 
 use self::entry::{Entry, Key};
+use parking_lot::ReentrantMutex;
 use rand::random;
 
 mod entry;
@@ -26,7 +28,7 @@ fn default_cmp<K: Ord>(k1: &K, k2: &K) -> Ordering {
 
 impl<K, V> SkipList<K, V>
 where
-    K: Ord,
+    K: Ord + Debug,
 {
     pub fn new() -> Self {
         SkipList::with_cmp(default_cmp)
@@ -51,14 +53,14 @@ where
 
 impl<K, V, C> SkipList<K, V, C>
 where
-    K: Ord,
+    K: Ord + Debug,
     C: Fn(&K, &K) -> Ordering,
 {
     pub fn with_cmp(cmp: C) -> Self {
         let head = Box::into_raw(Box::new(Entry {
             key: Key::Head,
             value: None,
-            lock: Mutex::new(()),
+            lock: ReentrantMutex::new(()),
             marked: AtomicBool::new(false),
             fully_linked: AtomicBool::new(false),
             top_level: MAX_LEVEL,
@@ -68,7 +70,7 @@ where
         let tail = Box::into_raw(Box::new(Entry {
             key: Key::Tail,
             value: None,
-            lock: Mutex::new(()),
+            lock: ReentrantMutex::new(()),
             marked: AtomicBool::new(false),
             fully_linked: AtomicBool::new(false),
             top_level: MAX_LEVEL,
@@ -106,27 +108,23 @@ where
                 return false;
             }
 
-            let mut highest_locked = usize::MAX;
-
-            let mut pred = null_mut();
-            let mut succ = null_mut();
-
             let mut valid = true;
             let mut guards = Vec::with_capacity(top_level + 1);
 
             for level in 0..=top_level {
-                pred = preds[level];
-                succ = succs[level];
-
                 unsafe {
-                    guards.push((*pred).lock.lock().unwrap());
-                    if highest_locked < level {
-                        highest_locked = level;
-                    }
+                    let pred = &mut *preds[level];
+                    let succ = &mut *succs[level];
 
-                    valid = !(*pred).marked.load(Relaxed)
+                    guards.push(pred.lock.lock());
+
+                    valid = !pred.marked.load(Relaxed)
                         && !(*succ).marked.load(Relaxed)
-                        && (*pred).nexts[level].load(Relaxed) == succ;
+                        && pred.nexts[level].load(Relaxed) == succ;
+
+                    if !valid {
+                        break;
+                    }
                 }
             }
 
@@ -138,7 +136,7 @@ where
             let new_entry = Box::into_raw(Box::new(Entry {
                 key,
                 value: Some(value),
-                lock: Mutex::new(()),
+                lock: ReentrantMutex::new(()),
                 marked: AtomicBool::new(false),
                 fully_linked: AtomicBool::new(false),
                 top_level,
@@ -182,7 +180,7 @@ where
                 {
                     if !is_marked {
                         top_level = victim.top_level;
-                        _victim_handle = Some(victim.lock.lock().unwrap());
+                        _victim_handle = Some(&victim.lock.lock());
                         if victim.marked.load(Relaxed) {
                             return None;
                         }
@@ -201,20 +199,18 @@ where
                 for level in 0..=top_level {
                     unsafe {
                         let pred = &mut *preds[level];
-                        let succ = &mut *succs[level];
 
-                        guards.push(pred.lock.lock().unwrap());
+                        guards.push(pred.lock.lock());
                         if highest_locked < level {
                             highest_locked = level;
                         }
 
-                        valid = !pred.marked.load(Relaxed)
-                            && !succ.marked.load(Relaxed)
-                            && pred.nexts[level].load(Relaxed) == succ;
-                    }
+                        valid =
+                            !pred.marked.load(Relaxed) && pred.nexts[level].load(Relaxed) == (victim);
 
-                    if !valid {
-                        break;
+                        if !valid {
+                            break;
+                        }
                     }
                 }
 
@@ -223,7 +219,7 @@ where
                 }
 
                 unsafe {
-                    for level in (0..=top_level).rev() {
+                    for level in 0..=top_level {
                         (*preds[level]).nexts[level]
                             .store((*succs[level]).nexts[level].load(Relaxed), Relaxed);
                     }
@@ -271,7 +267,7 @@ where
     }
 
     pub fn get(&self, key: K) -> Option<&V> {
-        let pred = self.head;
+        let mut pred = self.head;
 
         let key = Key::Entry(key);
 
@@ -279,6 +275,7 @@ where
             let mut current = unsafe { (*pred).nexts[level].load(Relaxed).as_mut().unwrap() };
 
             while current.key < key {
+                pred = current;
                 current = unsafe { (*current).nexts[level].load(Relaxed).as_mut().unwrap() };
             }
 

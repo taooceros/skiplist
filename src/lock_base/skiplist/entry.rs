@@ -2,6 +2,8 @@ use std::cmp::Ordering;
 use std::sync::atomic::{AtomicBool, AtomicPtr};
 use std::sync::Mutex;
 
+use parking_lot::ReentrantMutex;
+
 pub struct Entry<K, V, C>
 where
     K: Ord,
@@ -9,14 +11,14 @@ where
 {
     pub key: Key<K>,
     pub value: Option<V>,
-    pub lock: Mutex<()>,
+    pub lock: ReentrantMutex<()>,
     pub marked: AtomicBool,
     pub fully_linked: AtomicBool,
     pub top_level: usize,
     pub nexts: Vec<AtomicPtr<Entry<K, V, C>>>,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum Key<K>
 where
     K: Ord,
