@@ -11,7 +11,9 @@ pub fn test_sequencial_skiplist() {
 
     let mut rng = thread_rng();
 
-    let mut numbers = (1..1000).collect::<Vec<_>>();
+    let length = 50000;
+
+    let mut numbers = (1..length).collect::<Vec<_>>();
 
     numbers.shuffle(&mut rng);
 
@@ -19,7 +21,7 @@ pub fn test_sequencial_skiplist() {
         skiplist.add(*i, *i);
     }
 
-    for i in 1..1000 {
+    for i in 1..length {
         assert_eq!(skiplist.get(i), Some(i).as_ref());
     }
 

@@ -1,12 +1,13 @@
+mod markable_atomic_ptr;
+mod skiplist;
+
 use std::thread;
 
 use rand::{seq::SliceRandom, thread_rng};
 
 use self::skiplist::SkipList;
 
-mod skiplist;
-
-pub fn test_lockbase_skiplist() {
+pub fn test_lockfree_skiplist() {
     let skiplist = &SkipList::new();
     thread::scope(|s| {
         // write some complicate test for the skiplist
@@ -31,8 +32,10 @@ pub fn test_lockbase_skiplist() {
                     //     assert_eq!(*value, i * j);
                     // }
 
-                    for j in 1..1000 {
-                        assert_eq!(skiplist.remove((i * length) + j).unwrap(), i * j);
+                    for j in 1..length {
+                        let item = skiplist.remove((i * length) + j);
+
+                        assert_eq!(item.unwrap(), i * j);
                     }
                 })
             })
